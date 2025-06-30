@@ -4,53 +4,90 @@ using UnityEngine.UI;
 
 public class Quiz : MonoBehaviour
 {
+    [Header("Quiz Scenes")]
     [SerializeField] GameObject MainMenuScene;
     [SerializeField] GameObject QuizScene;
     [SerializeField] GameObject QuizEndScene;
+
+    [Header("Question")]
     [SerializeField] TextMeshProUGUI questionText;
     [SerializeField] QuestionSO[] questions;
+
+    [Header("Buttons")]
     [SerializeField] GameObject playButton;
     [SerializeField] GameObject[] answerButtons;
-    [SerializeField] GameObject nextButton;
+    // [SerializeField] GameObject nextButton;
     [SerializeField] GameObject backToMenuButton;
     [SerializeField] GameObject retryButton;
-    [SerializeField] GameObject scoreText;
-    int correctAnswerIndex;
-    int currentQuestionIndex = 0;
+
+    [Header("Answer Sprites")]
     [SerializeField] Sprite defaultAnswerSprite;
     [SerializeField] Sprite incorrectAnswerSprite;
     [SerializeField] Sprite correctAnswerSprite;
+
+    [Header("Score and Timer")]
+    [SerializeField] GameObject scoreText;
+    [SerializeField] Image timerImage;
+    Timer timer;
+
+    int currentQuestionIndex = 0;
     int correctAnswerCount = 0;
+    bool isAnswerSelected = false;
+
 
 
     void Start()
     {
+        timer = FindFirstObjectByType<Timer>();
         MainMenuScene.SetActive(true);
+    }
+
+    void Update()
+    {
+        timerImage.fillAmount = timer.fillFraction;
+        if (timer.loadQuestionResult && !isAnswerSelected)
+        {
+            OnAnswerSelected(-1); // This will trigger the result display without selecting an answer
+            timer.loadQuestionResult = false;
+
+        }
+        else if (timer.loadNextQuestion)
+        {
+            LoadNextQuestion();
+            timer.loadNextQuestion = false;
+        }
     }
 
     public void OnAnswerSelected(int index)
     {
-        if (index < 0 || index >= answerButtons.Length)
+        Debug.Log("Answer selected: " + index);
+        if (index == -1) // This is for the case when the result is displayed without selecting an answer
         {
-            Debug.LogError("Index out of bounds: " + index);
-            return;
-        }
-        if (index == questions[currentQuestionIndex].GetCorrectAnswerIndex())
-        {
-            correctAnswerCount++;
-            questionText.text = "Correct!";
-            answerButtons[index].GetComponent<Image>().sprite = correctAnswerSprite;
-            Debug.Log("Correct answer selected!");
-        }
-        else
-        {
-            questionText.text = "Wrong answer you donut!";
-            answerButtons[index].GetComponent<Image>().sprite = incorrectAnswerSprite;
+            questionText.text = "Time's up!";
             answerButtons[questions[currentQuestionIndex].GetCorrectAnswerIndex()].GetComponent<Image>().sprite = correctAnswerSprite;
-            Debug.Log("Incorrect answer selected.");
+            Debug.Log("Time's up! Correct answer displayed.");
+        }
+        if (index != -1)
+        {
+            isAnswerSelected = true;
+            if (index == questions[currentQuestionIndex].GetCorrectAnswerIndex())
+            {
+                correctAnswerCount++;
+                questionText.text = "Correct!";
+                answerButtons[index].GetComponent<Image>().sprite = correctAnswerSprite;
+                Debug.Log("Correct answer selected!");
+            }
+            else
+            {
+                questionText.text = "Wrong answer you donut!";
+                answerButtons[index].GetComponent<Image>().sprite = incorrectAnswerSprite;
+                answerButtons[questions[currentQuestionIndex].GetCorrectAnswerIndex()].GetComponent<Image>().sprite = correctAnswerSprite;
+                Debug.Log("Incorrect answer selected.");
+            }
+            timer.CancelTimer();
         }
         SetButtonState(false);
-        nextButton.SetActive(true);
+        // nextButton.SetActive(true);
     }
 
     void DisplayQuestion()
@@ -98,7 +135,8 @@ public class Quiz : MonoBehaviour
 
     public void GetNextQuestion()
     {
-        nextButton.SetActive(false);
+        // nextButton.SetActive(false);
+        isAnswerSelected = false;
         SetButtonState(true);
         SetDefaultButtonSprites();
 
@@ -110,6 +148,8 @@ public class Quiz : MonoBehaviour
         else
         {
             Debug.Log("No more questions available.");
+            timer.EndTimer();
+            timerImage.gameObject.SetActive(false);
             Debug.Log("Correct answers: " + correctAnswerCount);
             float score = (float)correctAnswerCount / questions.Length * 100f;
             Debug.Log("Score: " + score);
@@ -139,6 +179,8 @@ public class Quiz : MonoBehaviour
     {
         MainMenuScene.SetActive(false);
         QuizScene.SetActive(true);
+        timerImage.gameObject.SetActive(true);
+        timer.StartTimer();
         DisplayQuestion();
         DisplayAnswers();
     }
@@ -164,6 +206,8 @@ public class Quiz : MonoBehaviour
         SetButtonState(true);
         DisplayQuestion();
         DisplayAnswers();
+        timerImage.gameObject.SetActive(true);
+        timer.StartTimer();
     }
 
 }
